@@ -1,0 +1,1 @@
+{"metadata":{"hostname":"ALPHA-HOST"},"risk":{"riskScore":95,"threatLevel":"CRITICAL"},"iocs":[{"type":"IP","value":"10.99.88.77"}]}

@@ -1,0 +1,1 @@
+{"metadata":{"hostname":"ISOLATED-HOST-02"},"siem_events":[{"event_id":"EVT-9001","raw_event":"User logon success","severity":"LOW","action":"LOGON"}]}

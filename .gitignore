@@ -1,0 +1,14 @@
+
+node_modules/
+node_modules.zip
+backend.zip
+frontend.zip
+database.zip
+Docker Desktop Installer.exe
+.next/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log

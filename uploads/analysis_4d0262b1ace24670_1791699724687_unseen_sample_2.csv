@@ -1,0 +1,2 @@
+"Node Name";"User";"IP Address";"CVE ID";"Vulnerability Title";"CVSS Score";"Threat Severity";"Fix Version"
+"PROD-DB-01";"dbadmin";"10.50.1.20";"CVE-2025-1111";"Database Injection Leak";"8.9";"HIGH";"v2.1.0"

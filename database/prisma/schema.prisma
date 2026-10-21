@@ -1,0 +1,376 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator backendClient {
+  provider = "prisma-client-js"
+  output   = "../../backend/node_modules/.prisma/client"
+}
+
+enum ThreatLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SoarStatus {
+  COMPLETED
+  PENDING_APPROVAL
+  RECOMMENDED
+  FAILED
+  PENDING
+  RUNNING
+  SIMULATION
+}
+
+enum UserRole {
+  ADMIN
+  SOC_ANALYST
+  READONLY_ANALYST
+}
+
+model Analysis {
+  id               String         @id @default(uuid())
+  analysisId       String         @unique @default(cuid())
+  fileName         String
+  originalFileName String
+  fileSize         Int
+  fileType         String
+  mimeType         String
+  uploadedAt       DateTime       @default(now())
+  analysisTime     DateTime?
+  hostname         String?
+  username         String?
+  operatingSystem  String?
+  riskScore        Int?
+  threatLevel      ThreatLevel?   // Nullable: stored as NULL if not in source, displayed as "Not Available"
+  recommendation   String?        @db.Text
+  status           AnalysisStatus @default(PENDING)
+  source           String?        @db.Text
+  isArchived       Boolean        @default(false)
+  parsingStatus    String?        @default("COMPLETED")
+  parsingWarnings  Json?
+  unrecognizedFields Json?
+  provenance       Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relationships
+  fileMetadata      FileMetadata?
+  hashes            Hash?
+  fileProperties    FileProperty?
+  yaraResults       YaraResult[]
+  virusTotalResult  VirusTotalResult?
+  iocs              Ioc[]
+  mitreTechniques   MitreTechnique[]
+  behaviorEvents    BehaviorEvent[]
+  sandboxResults    SandboxResult[]
+  siemEvents        SiemEvent[]
+  incidents         Incident[]
+  cases             Case[]
+  soarExecutions    SoarExecution[]
+  assets            Asset[]
+  endpoints         Endpoint[]
+  vulnerabilities   Vulnerability[]
+  auditLogs         AuditLog[]
+
+  // Ownership relation
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([analysisId])
+  @@index([createdAt])
+  @@index([threatLevel])
+  @@index([isArchived])
+  @@index([userId])
+}
+
+model User {
+  id        String     @id @default(uuid())
+  userId    String     @unique @default(cuid())
+  username  String     @unique
+  email     String     @unique
+  password  String?
+  role      UserRole   @default(SOC_ANALYST)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  analyses  Analysis[]
+
+  @@index([username])
+  @@index([role])
+}
+
+model FileMetadata {
+  id               String   @id @default(uuid())
+  analysisId       String   @unique
+  analysis         Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  filePath         String
+  storageKey       String
+  extension        String
+  headerMagic      String?
+  encoding         String?
+  calculatedMd5    String?
+  calculatedSha1   String?
+  calculatedSha256 String?
+
+  @@index([analysisId])
+}
+
+model Hash {
+  id         String   @id @default(uuid())
+  analysisId String   @unique
+  analysis   Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  md5        String?
+  sha1       String?
+  sha256     String?
+  ssdeep     String?
+
+  @@index([analysisId])
+}
+
+model FileProperty {
+  id               String   @id @default(uuid())
+  analysisId       String   @unique
+  analysis         Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  entropy          Float?
+  digitalSignature String?
+  isPacked         Boolean?
+  packer           String?
+  imports          Json?
+  suspiciousApis   Json?
+
+  @@index([analysisId])
+}
+
+model YaraResult {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  ruleName    String
+  namespace   String?
+  tags        Json?
+  meta        Json?
+  description String?
+
+  @@index([analysisId])
+}
+
+model VirusTotalResult {
+  id           String   @id @default(uuid())
+  analysisId   String   @unique
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  positives    Int
+  total        Int
+  permalink    String?
+  scanDate     String?
+  detections   Json?
+
+  @@index([analysisId])
+}
+
+model Ioc {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  type        String
+  value       String
+  category    String?
+  confidence  Int?
+  description String?
+
+  @@index([analysisId])
+  @@index([type, value])
+}
+
+model MitreTechnique {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  tactic      String
+  techniqueId String
+  name        String
+  description String?  @db.Text
+
+  @@index([analysisId])
+}
+
+model BehaviorEvent {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  eventType   String
+  action      String
+  target      String
+  details     String?  @db.Text
+  timestamp   DateTime?
+
+  @@index([analysisId])
+}
+
+model SandboxResult {
+  id           String   @id @default(uuid())
+  analysisId   String
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  sandboxName  String
+  verdict      String
+  score        Int?
+  details      Json?
+
+  @@index([analysisId])
+}
+
+model SiemEvent {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  eventId     String?
+  sourceIp    String?
+  destIp      String?
+  sourcePort  Int?
+  destPort    Int?
+  protocol    String?
+  action      String?
+  severity    String?
+  rawEvent    String   @db.Text
+  timestamp   DateTime
+
+  @@index([analysisId])
+}
+
+model Incident {
+  id           String       @id @default(uuid())
+  analysisId   String
+  analysis     Analysis     @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  title        String
+  severity     ThreatLevel?
+  status       String
+  reason       String
+  assignedTo   String?
+  createdAt    DateTime     @default(now())
+
+  @@index([analysisId])
+}
+
+model Case {
+  id           String   @id @default(uuid())
+  analysisId   String
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  caseNumber   String   @unique
+  title        String
+  status       String
+  priority     String
+  summary      String?  @db.Text
+
+  @@index([analysisId])
+}
+
+model SoarExecution {
+  id           String     @id @default(uuid())
+  analysisId   String
+  analysis     Analysis   @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  actionName   String
+  description  String?    @db.Text
+  actionType   String?
+  target       String?
+  status       SoarStatus
+  triggeredBy  String?    @default("Source")
+  source       String?    @default("Source")
+  result       String?    @db.Text
+  executionLog String?    @db.Text
+  executedAt   DateTime?
+  completedAt  DateTime?
+  timestamp    DateTime   @default(now())
+
+  @@index([analysisId])
+}
+
+model Asset {
+  id              String   @id @default(uuid())
+  analysisId      String
+  analysis        Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  assetName       String
+  hostname        String?
+  ipAddress       String?
+  macAddress      String?
+  assetType       String?
+  criticality     String?
+  operatingSystem String?
+  owner           String?
+  status          String?
+  source          String?
+  description     String?  @db.Text
+  evidence        String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([analysisId])
+}
+
+model Endpoint {
+  id              String   @id @default(uuid())
+  analysisId      String
+  analysis        Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  hostname        String
+  ipAddress       String?
+  osVersion       String?
+  operatingSystem String?
+  user            String?
+  agentStatus     String?
+  status          String?
+  endpointType    String?
+  source          String?
+  evidence        String?  @db.Text
+  lastSeen        DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([analysisId])
+}
+
+model Vulnerability {
+  id               String   @id @default(uuid())
+  analysisId       String
+  analysis         Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  cveId            String
+  title            String
+  cvssScore        Float?
+  severity         String?
+  description      String?  @db.Text
+  affectedAsset    String?
+  packageName      String?
+  installedVersion String?
+  fixedVersion     String?
+  status           String?
+  remediation      String?  @db.Text
+  source           String?
+  evidence         String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([analysisId])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  analysisId  String?
+  analysis    Analysis? @relation(fields: [analysisId], references: [analysisId], onDelete: SetNull)
+  action      String
+  performedBy String
+  timestamp   DateTime  @default(now())
+  details     String?   @db.Text
+}

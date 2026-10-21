@@ -1,0 +1,448 @@
+# SOC Security Platform (Greenfield Architecture) Implementation Plan
+
+## Executive Summary
+This document outlines the architecture, database schema, API specification, parser pipeline, frontend state management, and phased development plan for building a clean, enterprise-grade SOC Security Platform from scratch.
+
+The design strictly eliminates cross-sample data contamination, dual backend data paths, mock data fallbacks, and unauthorized silent generation of security entities.
+
+---
+
+## Architecture Corrections & Strict Rules
+
+1. **Nullable Threat Level:** `ThreatLevel` is nullable. `UNKNOWN` is NOT used as a default source value. A missing source threat level is stored as `NULL` in the database and rendered as `"Not Available"` on the frontend.
+2. **Conditional Asset/Endpoint Creation:** Asset and Endpoint records are created ONLY if explicit host/asset data exists in the uploaded source file.
+3. **Strict Incident/Case/SOAR/Vulnerability Generation:** Incidents, Cases, SOAR executions, or Vulnerability records are created ONLY if:
+   - They are explicitly present in the uploaded source, OR
+   - A documented detection/rule engine explicitly creates them and logs the explicit rule reason.
+4. **Source File Preservation & Traceability:** Original uploaded source files are permanently preserved in `/uploads`. Analysis records link directly to source file metadata, line offsets, or raw input chunks for full auditability.
+5. **Archive / Deactivate over Delete:** Analyses implement soft-archive/deactivate functionality (`isActive Boolean @default(true)` or `isArchived Boolean @default(false)`). Permanent hard-delete is NOT used for analyses in Version 1.
+
+---
+
+## 1. Final Architecture
+
+```
+                                  +-----------------------+
+                                  |    Browser Client     |
+                                  +-----------+-----------+
+                                              |
+                                              | HTTP / REST API (Port 4000)
+                                              v
+                                  +-----------------------+
+                                  |   Next.js Frontend    |
+                                  | (React + TanStack Q)  |
+                                  +-----------+-----------+
+                                              |
+                                              | REST API requests only (/api/v1/...)
+                                              v
+                                  +-----------------------+
+                                  |    NestJS Backend     |
+                                  |    (Single Source)    |
+                                  +-----+-----+-----+-----+
+                                        |     |     |
+            +---------------------------+     |     +--------------------------+
+            |                                 |                                |
+            v                                 v                                v
++-----------------------+         +-----------------------+        +-----------------------+
+|    Upload Storage     |         |   Parser Engine       |        |      Prisma ORM       |
+|  (local /uploads)     |         | (Log, JSON, CSV)      |        +-----------+-----------+
++-----------------------+         +-----------------------+                    |
+                                                                               v
+                                                                   +-----------------------+
+                                                                   |     MySQL Database    |
+                                                                   |  (Single DB Schema)   |
+                                                                   +-----------------------+
+```
+
+---
+
+## 2. Folder Structure
+
+The project is organized in `d:\soc 2.0`:
+
+```
+soc-platform/
+├── frontend/                     # Next.js 14 (App Router)
+│   ├── app/                      # Next.js App Router pages
+│   │   ├── layout.tsx            # Root layout with QueryClient & AnalysisProvider
+│   │   ├── page.tsx              # Dashboard page
+│   │   ├── upload/               # File upload page
+│   │   ├── analysis/             # File Analysis detailed page
+│   │   ├── siem/                 # SIEM Events page
+│   │   ├── threat-intel/         # Threat Intelligence page
+│   │   ├── ioc/                  # IOC Search page
+│   │   ├── incidents/            # Incidents Management page
+│   │   ├── cases/                # Case Management page
+│   │   ├── soar/                 # SOAR Execution page
+│   │   ├── assets/               # Assets & Endpoints page
+│   │   ├── vulnerabilities/      # Vulnerability Assessment page
+│   │   ├── reports/              # Report Generator page
+│   │   └── analytics/            # Enterprise & Sample Analytics page
+│   ├── components/               # UI components
+│   │   ├── common/               # Reusable primitives (Button, Modal, Loader, EmptyState)
+│   │   ├── layout/               # TopBar, Navigation Sidebar, ActiveSampleSelector
+│   │   └── modules/              # Module-specific components
+│   ├── context/                  # React Contexts
+│   │   └── AnalysisContext.tsx   # Central currentAnalysisId state store
+│   ├── features/                 # TanStack Query custom hooks per domain
+│   ├── lib/                      # API client configuration
+│   └── types/                    # Shared TypeScript interfaces
+│
+├── backend/                      # NestJS REST API Server
+│   ├── src/
+│   │   ├── main.ts               # Entrypoint (Port 4000, CORS, ValidationPipe)
+│   │   ├── app.module.ts         # Root Module
+│   │   ├── common/               # Interceptors, Filters, Pipes
+│   │   ├── prisma/               # Prisma Service & Module
+│   │   ├── health/               # Health Check Module (/api/v1/health)
+│   │   ├── upload/               # Upload Module
+│   │   ├── parser/               # Multi-Format Parser Engine
+│   │   ├── analysis/             # Core Analysis Module
+│   │   └── ...                   # Other SOC modules
+│   └── test/                     # E2E & Integration Tests
+│
+├── database/                     # Database Schema & Seed Assets
+│   ├── prisma/
+│   │   └── schema.prisma         # Authoritative Prisma Schema
+│   └── seed/                     # Development seed data
+│
+├── uploads/                      # Local file storage for source files
+├── docker-compose.yml            # Docker setup for MySQL 8.0
+├── README.md                     # Setup & Architecture Guide
+└── .env.example                  # Environment Variables template
+```
+
+---
+
+## 3. Prisma Schema Design
+
+```prisma
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ThreatLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SoarStatus {
+  COMPLETED
+  PENDING_APPROVAL
+  RECOMMENDED
+  FAILED
+}
+
+model Analysis {
+  id               String         @id @default(uuid())
+  analysisId       String         @unique @default(cuid())
+  fileName         String
+  originalFileName String
+  fileSize         Int
+  fileType         String
+  mimeType         String
+  uploadedAt       DateTime       @default(now())
+  analysisTime     DateTime?
+  hostname         String?
+  username         String?
+  operatingSystem  String?
+  riskScore        Int?
+  threatLevel      ThreatLevel?   // Nullable: missing threat level stored as NULL -> rendered "Not Available"
+  recommendation   String?        @db.Text
+  status           AnalysisStatus @default(PENDING)
+  source           String?        @db.Text
+  isArchived       Boolean        @default(false) // Deactivate/Archive instead of permanent delete
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relationships
+  fileMetadata      FileMetadata?
+  hashes            Hash?
+  fileProperties    FileProperty?
+  yaraResults       YaraResult[]
+  virusTotalResult  VirusTotalResult?
+  iocs              Ioc[]
+  mitreTechniques   MitreTechnique[]
+  behaviorEvents    BehaviorEvent[]
+  sandboxResults    SandboxResult[]
+  siemEvents        SiemEvent[]
+  incidents         Incident[]
+  cases             Case[]
+  soarExecutions    SoarExecution[]
+  assets            Asset[]
+  endpoints         Endpoint[]
+  vulnerabilities   Vulnerability[]
+  auditLogs         AuditLog[]
+
+  @@index([analysisId])
+  @@index([createdAt])
+  @@index([threatLevel])
+  @@index([isArchived])
+}
+
+model FileMetadata {
+  id          String   @id @default(uuid())
+  analysisId  String   @unique
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  filePath    String   // Preserved path in /uploads
+  storageKey  String
+  extension   String
+  headerMagic String?
+  encoding    String?
+
+  @@index([analysisId])
+}
+
+model Hash {
+  id         String   @id @default(uuid())
+  analysisId String   @unique
+  analysis   Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  md5        String?
+  sha1       String?
+  sha256     String?
+  ssdeep     String?
+
+  @@index([analysisId])
+}
+
+model FileProperty {
+  id               String   @id @default(uuid())
+  analysisId       String   @unique
+  analysis         Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  entropy          Float?
+  digitalSignature String?
+  isPacked         Boolean?
+  packer           String?
+  imports          Json?
+  suspiciousApis   Json?
+
+  @@index([analysisId])
+}
+
+model YaraResult {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  ruleName    String
+  namespace   String?
+  tags        Json?
+  meta        Json?
+  description String?
+
+  @@index([analysisId])
+}
+
+model VirusTotalResult {
+  id           String   @id @default(uuid())
+  analysisId   String   @unique
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  positives    Int
+  total        Int
+  permalink    String?
+  scanDate     String?
+  detections   Json?
+
+  @@index([analysisId])
+}
+
+model Ioc {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  type        String   // IP, DOMAIN, URL, EMAIL, HASH
+  value       String
+  category    String?
+  confidence  Int?
+  description String?
+
+  @@index([analysisId])
+  @@index([type, value])
+}
+
+model MitreTechnique {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  tactic      String
+  techniqueId String
+  name        String
+  description String?  @db.Text
+
+  @@index([analysisId])
+}
+
+model BehaviorEvent {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  eventType   String
+  action      String
+  target      String
+  details     String?  @db.Text
+  timestamp   DateTime?
+
+  @@index([analysisId])
+}
+
+model SandboxResult {
+  id           String   @id @default(uuid())
+  analysisId   String
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  sandboxName  String
+  verdict      String
+  score        Int?
+  details      Json?
+
+  @@index([analysisId])
+}
+
+model SiemEvent {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  eventId     String?
+  sourceIp    String?
+  destIp      String?
+  sourcePort  Int?
+  destPort    Int?
+  protocol    String?
+  action      String?
+  severity    String?
+  rawEvent    String   @db.Text
+  timestamp   DateTime
+
+  @@index([analysisId])
+}
+
+model Incident {
+  id           String       @id @default(uuid())
+  analysisId   String
+  analysis     Analysis     @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  title        String
+  severity     ThreatLevel?
+  status       String
+  reason       String       // Logged reason: explicit source entry vs rule engine output
+  assignedTo   String?
+  createdAt    DateTime     @default(now())
+
+  @@index([analysisId])
+}
+
+model Case {
+  id           String   @id @default(uuid())
+  analysisId   String
+  analysis     Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  caseNumber   String   @unique
+  title        String
+  status       String
+  priority     String
+  summary      String?  @db.Text
+
+  @@index([analysisId])
+}
+
+model SoarExecution {
+  id          String     @id @default(uuid())
+  analysisId  String
+  analysis    Analysis   @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  actionName  String
+  target      String?
+  status      SoarStatus
+  executionLog String?   @db.Text
+  timestamp   DateTime   @default(now())
+
+  @@index([analysisId])
+}
+
+model Asset {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  assetName   String
+  ipAddress   String?
+  macAddress  String?
+  assetType   String?
+  criticality String?
+
+  @@index([analysisId])
+}
+
+model Endpoint {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  hostname    String
+  osVersion   String?
+  agentStatus String?
+  lastSeen    DateTime?
+
+  @@index([analysisId])
+}
+
+model Vulnerability {
+  id          String   @id @default(uuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [analysisId], onDelete: Cascade)
+  cveId       String
+  title       String
+  cvssScore   Float?
+  severity    String?
+  description String?  @db.Text
+
+  @@index([analysisId])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  analysisId  String?
+  analysis    Analysis? @relation(fields: [analysisId], references: [analysisId], onDelete: SetNull)
+  action      String
+  performedBy String
+  timestamp   DateTime  @default(now())
+  details     String?   @db.Text
+}
+```
+
+---
+
+## 4. API Endpoints (v1)
+
+- `GET    /api/v1/health` - System health check.
+- `POST   /api/v1/analyses/upload` - Upload file & start parsing.
+- `GET    /api/v1/analyses` - List analyses (`isArchived: false`).
+- `GET    /api/v1/analyses/:analysisId` - Get single analysis.
+- `PATCH  /api/v1/analyses/:analysisId/archive` - Soft archive analysis (`isArchived: true`).
+- `GET    /api/v1/analyses/:analysisId/[module]` - Module endpoints (file, yara, virustotal, iocs, mitre, behavior, sandbox, siem, incidents, cases, soar, assets, endpoints, vulnerabilities, reports, analytics).
+
+---
+
+## 5. Phase 1 Implementation Plan (IN PROGRESS)
+
+Scope of Phase 1:
+1. Greenfield project setup in `d:\soc 2.0` (backend, frontend, root environment configs).
+2. NestJS initialization with TypeScript, `@nestjs/config`, `class-validator`, `class-transformer`.
+3. Prisma ORM initialization with MySQL database connection setup (`schema.prisma`).
+4. Next.js initialization with Tailwind CSS, React, TypeScript.
+5. Health Module implementation (`GET /api/v1/health`).
+6. Environment files setup (`.env.example`, `.env`).
+7. Build and runtime verification:
+   - Database connection check.
+   - Prisma schema validation & migration.
+   - NestJS build & startup test (`GET /api/v1/health` verification).
+   - Next.js build & startup check.
+
+*No upload handlers or SOC modules will be implemented in Phase 1.*

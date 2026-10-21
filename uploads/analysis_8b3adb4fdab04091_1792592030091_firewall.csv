@@ -1,0 +1,2 @@
+timestamp,src_ip,dst_ip,sport,dport,proto,action,severity,message
+2026-10-11 10:00:00,10.0.0.5,198.51.100.99,54123,443,TCP,BLOCKED,HIGH,C2 beacon blocked

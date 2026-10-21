@@ -1,0 +1,1 @@
+{"system_host":"HOST-ALPHA-01","logged_user":"fin_analyst","os_name":"Windows 11 Enterprise","risk_score":25,"severity_level":"MEDIUM","yara_matches":[{"rule_name":"Alpha_Suspicious_Script","description":"PowerShell script execution"}],"iocs":[{"type":"IP","value":"192.168.1.100","category":"Internal"}]}

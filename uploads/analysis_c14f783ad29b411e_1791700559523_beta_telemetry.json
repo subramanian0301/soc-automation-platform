@@ -1,0 +1,1 @@
+{"system_host":"HOST-BETA-02","logged_user":"sec_admin","os_name":"Ubuntu 22.04 LTS","risk_score":88,"severity_level":"CRITICAL","yara_matches":[{"rule_name":"Beta_Ransomware_LockBit","description":"LockBit ransomware signature"}],"iocs":[{"type":"DOMAIN","value":"malicious-c2.net","category":"Command & Control"}]}

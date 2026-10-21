@@ -1,0 +1,2 @@
+sourceIp,destIp,sourcePort,destPort,protocol,action,severity,riskScore,threatLevel,hostname
+10.0.0.2,192.168.1.1,443,80,TCP,ALLOW,MEDIUM,33,Medium,HOST-B-SUSPICIOUS

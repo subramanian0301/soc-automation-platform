@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "hostname": "HOST-HIGH-01",
+    "username": "administrator",
+    "operatingSystem": "Windows 11 Enterprise"
+  },
+  "risk": {
+    "riskScore": 98,
+    "threatLevel": "CRITICAL",
+    "recommendation": "Isolate host and block C2 IP immediately"
+  },
+  "fileProperties": {
+    "entropy": 7.94,
+    "digitalSignature": "Not Signed",
+    "isPacked": true,
+    "packer": "UPX"
+  },
+  "hashes": {
+    "md5": "c157a79031e1c40f85931829bc5fc552",
+    "sha256": "7d10e53a25d2b70f05e324021200dfd3d493a74360e28509d3161c47101859c2"
+  },
+  "yara": [
+    { "ruleName": "Trojan.Win32.Loader", "description": "Detects UPX packed loader variant" }
+  ],
+  "virusTotal": {
+    "positives": 68,
+    "total": 72
+  },
+  "iocs": [
+    { "type": "IP", "value": "198.51.100.98", "confidence": 100 }
+  ]
+}

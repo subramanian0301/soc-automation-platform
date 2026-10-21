@@ -1,0 +1,1 @@
+{"metadata":{"hostname":"BETA-HOST"},"risk":{"riskScore":10,"threatLevel":"LOW"},"iocs":[{"type":"DOMAIN","value":"beta-clean-domain.org"}]}

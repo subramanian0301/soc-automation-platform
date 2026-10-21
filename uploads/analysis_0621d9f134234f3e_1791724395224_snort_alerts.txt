@@ -1,0 +1,2 @@
+[**] [1:1000001:1] ET SCAN Potential SSH Brute Force [**] [Classification: Attempted Administrator Privilege Gain] [Priority: 1] {TCP} 198.51.100.77:43210 -> 10.0.0.2:22
+[**] [1:2001219:2] ET MALWARE Suspicious Inbound Beacon [**] [Classification: A Network Trojan was detected] [Priority: 1] {TCP} 203.0.113.99:8080 -> 10.0.0.15:49152

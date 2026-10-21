@@ -1,0 +1,97 @@
+====================================================
+SOC FILE ANALYSIS SAMPLE LOG
+====================================================
+
+Timestamp: 2026-09-18T10:15:00Z
+Hostname: WIN-OFFICE-042
+User: john.doe
+OS: Windows 11 Enterprise
+
+====================================================
+FILE INFORMATION
+====================================================
+
+File Name      : AcrobatUpdateHelper.exe
+File Size      : 1.15 MB
+File Type      : PE32 Executable
+MIME Type      : application/x-dosexec
+
+MD5            : 2b7d3f8216c278bc903eef5912a10123
+SHA1           : 890abcefa1234567890bcda12345678901234567
+SHA256         : e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+Compile Time   : 2026-05-14 09:22:15 UTC
+Entropy        : 3.12
+Digital Signature : Valid (Adobe Systems Incorporated)
+
+====================================================
+STATIC ANALYSIS
+====================================================
+
+Packed          : No
+Packer          : None
+Imports         : kernel32.dll
+                 user32.dll
+                 gdi32.dll
+
+====================================================
+YARA RESULTS
+====================================================
+
+Rule Name       : Clean.Binary.Signed
+Severity        : Informational
+Matched Strings :
+  $cert_valid
+  $clean_header
+
+====================================================
+VIRUSTOTAL
+====================================================
+
+Detection Ratio : 0 / 72
+Verdict         : Clean
+
+====================================================
+NETWORK IOCS
+====================================================
+
+Domain          : armmf.adobe.com
+URL             : https://armmf.adobe.com/update/manifest.xml
+
+====================================================
+MITRE ATT&CK
+====================================================
+
+None
+
+====================================================
+BEHAVIOR
+====================================================
+
+Created Process : None
+Registry Modified : None
+Persistence     : No
+Dropped Files   : None
+
+====================================================
+SANDBOX RESULTS
+====================================================
+
+Processes Created : 0
+Files Created     : 0
+Registry Keys     : 0
+Network Requests  : 1
+
+====================================================
+THREAT SCORE
+====================================================
+
+Risk Score     : 3/100
+Threat Level   : Low
+Recommendation :
+- Allow Execution
+- No Incident Required
+
+====================================================
+END OF LOG
+====================================================

@@ -1,0 +1,2 @@
+{"timestamp":"2026-10-11T14:00:00Z","level":"WARN","src_ip":"192.168.1.10","dst_ip":"10.0.0.1","action":"DENY","message":"Unauthorized SSH"}
+{"timestamp":"2026-10-11T14:01:00Z","level":"INFO","src_ip":"192.168.1.12","dst_ip":"10.0.0.1","action":"ALLOW","message":"Authorized SSH"}

@@ -1,0 +1,1 @@
+{"metadata":{"hostname":"REPORT-TEST-HOST","username":"report_admin"},"risk":{"riskScore":88,"threatLevel":"CRITICAL"},"vulnerabilities":[{"cveId":"CVE-2023-9999","title":"=CMD|' /C calc'!A0","cvssScore":9.1,"severity":"CRITICAL"}],"soar":[{"actionName":"Isolate Host","status":"SIMULATION"}]}

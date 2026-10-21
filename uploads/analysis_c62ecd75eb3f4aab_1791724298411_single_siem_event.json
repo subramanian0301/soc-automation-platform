@@ -1,0 +1,1 @@
+{"timestamp":"2026-10-11T13:30:00Z","severity":"CRITICAL","rawEvent":"Ransomware C2 traffic detected on internal interface","sourceIp":"10.0.0.22","destIp":"203.0.113.199","sourcePort":55432,"destPort":443,"protocol":"TCP","action":"BLOCKED","eventId":"EVT-SINGLE-999"}

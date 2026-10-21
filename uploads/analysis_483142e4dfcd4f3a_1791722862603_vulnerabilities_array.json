@@ -1,0 +1,1 @@
+[{"cveId":"CVE-2024-1001","title":"Remote Code Execution A","cvssScore":9.8,"severity":"CRITICAL","affectedAsset":"WEB-SERVER-01"},{"cveId":"CVE-2024-1002","title":"SQL Injection B","cvssScore":8.5,"severity":"HIGH","affectedAsset":"DB-SERVER-01"}]

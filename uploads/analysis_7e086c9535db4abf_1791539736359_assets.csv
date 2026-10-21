@@ -1,0 +1,3 @@
+Asset Name;IP Address;MAC Address;Asset Type;Criticality;Operating System;Owner
+"FIN-WORKSTATION-01";"192.168.10.50";"00:11:22:33:44:55";"Workstation";"High";"Windows 11 Pro";"Finance Dept"
+"FIN-WORKSTATION-02";"192.168.10.51";"00:11:22:33:44:56";"Workstation";"High";"Windows 11 Pro";"Finance Dept"

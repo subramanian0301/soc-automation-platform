@@ -1,0 +1,129 @@
+{
+  "report_metadata": {
+    "report_id": "TR-2026-000417",
+    "generated_at": "2026-10-10T14:22:05Z",
+    "analyst_tool": "StaticScanner",
+    "agent_version": "4.2.1.88",
+    "sample": {
+      "file_name": "invoice_update.exe",
+      "file_type": "PE32 executable",
+      "file_size": 482304,
+      "md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "yara": {
+    "matches": [
+      {
+        "rule": "Suspicious_Packer_UPX",
+        "namespace": "packers",
+        "severity": "medium",
+        "tags": ["packer", "upx"]
+      },
+      {
+        "rule": "Generic_Downloader_Strings",
+        "namespace": "malware_generic",
+        "severity": "high",
+        "tags": ["downloader"]
+      }
+    ]
+  },
+  "virusTotal": {
+    "scan_date": "2026-10-10T14:20:11Z",
+    "positives": 41,
+    "total": 72,
+    "permalink": "https://www.virustotal.com/gui/file/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "detections": [
+      { "engine": "EngineA", "result": "Trojan.Downloader.Gen" },
+      { "engine": "EngineB", "result": "Win32/Agent.XYZ" },
+      { "engine": "EngineC", "result": "Malicious" }
+    ]
+  },
+  "iocs": {
+    "ips": ["203.0.113.45", "198.51.100.23"],
+    "domains": ["cdn-update.badhost.example", "c2.evil-domain.example"],
+    "urls": [
+      "http://cdn-update.badhost.example/payload.bin",
+      "https://c2.evil-domain.example/gate.php?id=417"
+    ],
+    "hashes": {
+      "md5": ["5d41402abc4b2a76b9719d911017c592"],
+      "sha1": ["aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"],
+      "sha256": ["2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"]
+    },
+    "emails": ["billing@spoofed-vendor.example"]
+  },
+  "mitre": {
+    "techniques": [
+      {
+        "id": "T1059.001",
+        "name": "Command and Scripting Interpreter: PowerShell",
+        "tactic": "Execution"
+      },
+      {
+        "id": "T1547.001",
+        "name": "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder",
+        "tactic": "Persistence"
+      },
+      {
+        "id": "T1071.001",
+        "name": "Application Layer Protocol: Web Protocols",
+        "tactic": "Command and Control"
+      }
+    ]
+  },
+  "behavior": {
+    "events": [
+      {
+        "type": "process_created",
+        "action": "observed",
+        "target": "powershell.exe -nop -w hidden -enc SQBFAFgA",
+        "timestamp": "2026-10-10T14:18:42Z",
+        "details": "Spawned by invoice_update.exe (PID 3120)"
+      },
+      {
+        "type": "registry_modified",
+        "action": "observed",
+        "target": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Updater",
+        "timestamp": "2026-10-10T14:18:44Z",
+        "details": "Value set to C:\\Users\\Public\\updater.exe"
+      },
+      {
+        "type": "network_connection",
+        "action": "observed",
+        "target": "203.0.113.45:443",
+        "timestamp": "2026-10-10T14:18:47Z",
+        "details": "Outbound TLS connection"
+      }
+    ],
+    "registry_modified": null,
+    "created_process": null,
+    "dropped_files": null,
+    "persistence": "No",
+    "mutex_created": "",
+    "files_deleted": false
+  },
+  "sandbox": {
+    "runs": [
+      {
+        "run_id": "sbx-0001",
+        "environment": "Windows 10 x64",
+        "started_at": "2026-10-10T14:18:30Z",
+        "duration_seconds": 120,
+        "verdict": "malicious",
+        "score": 9,
+        "signatures": [
+          "Executes encoded PowerShell",
+          "Adds autorun registry key",
+          "Connects to rare external host"
+        ]
+      }
+    ]
+  },
+  "analyst_notes": "Sample reviewed on 2026-10-10.\nFollow up with network team about 203.0.113.45.\nLoose line without a known structure.\nAnother loose line: see ticket 8841.\nUnrecognised block follows.",
+  "custom_section_unknown": {
+    "foo": "bar",
+    "legacy_field": "not part of the canonical schema"
+  }
+}

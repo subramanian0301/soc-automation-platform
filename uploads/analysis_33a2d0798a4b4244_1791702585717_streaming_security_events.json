@@ -1,0 +1,3 @@
+{"timestamp":"2026-10-11T12:00:00Z","level":"ERROR","message":"Failed login for user admin","src_ip":"198.51.100.55","dst_ip":"10.0.0.1","sport":54321,"dport":22,"proto":"TCP","action":"AUTH_FAILED","event_id":"EVT-JSON-001"}
+{"timestamp":"2026-10-11T12:01:00Z","level":"INFO","message":"Firewall accepted connection","src_ip":"192.0.2.10","dst_ip":"10.0.0.2","sport":61000,"dport":443,"proto":"TCP","action":"ALLOW","event_id":"EVT-JSON-002"}
+{"timestamp":"2026-10-11T12:02:00Z","level":"CRITICAL","message":"Brute force alert triggered from external source","src_ip":"198.51.100.55","dst_ip":"10.0.0.1","action":"BLOCK","event_id":"EVT-JSON-003"}
